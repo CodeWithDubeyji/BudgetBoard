@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Filter, X } from "lucide-react";
+import { MoreHorizontal, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
   Table,
@@ -80,6 +80,10 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
   const [filters, setFilters] = useState<Filters>({
     category: "",
     dateFrom: null,
@@ -129,6 +133,18 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
     });
   }, [data, filters]);
 
+  // Pagination calculations
+  const totalItems = filteredData.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
   const handleEdit = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
     setIsEditDialogOpen(true);
@@ -147,11 +163,11 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
       });
       if (!response.ok) throw new Error("Failed to delete.");
       
-      toast.success("Success!", { description: "Transaction deleted." });
+      toast.success("Success!", { description: "Transaction deleted.", richColors: true });
       router.refresh();
 
     } catch (error) {
-      toast.error("Error", { description: "Could not delete transaction." });
+      toast.error("Error", { description: "Could not delete transaction.", richColors: true });
     } finally {
         setIsDeleteDialogOpen(false);
         setSelectedTransaction(null);
@@ -175,10 +191,52 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
 
   const hasActiveFilters = Object.values(filters).some(value => value !== "" && value !== null);
 
+  // Pagination functions
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  const goToFirstPage = () => goToPage(1);
+  const goToLastPage = () => goToPage(totalPages);
+  const goToPreviousPage = () => goToPage(currentPage - 1);
+  const goToNextPage = () => goToPage(currentPage + 1);
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(parseInt(value));
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const delta = 2; // Number of pages to show on each side of current page
+    const range = [];
+    const rangeWithDots = [];
+
+    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+      range.push(i);
+    }
+
+    if (currentPage - delta > 2) {
+      rangeWithDots.push(1, '...');
+    } else {
+      rangeWithDots.push(1);
+    }
+
+    rangeWithDots.push(...range);
+
+    if (currentPage + delta < totalPages - 1) {
+      rangeWithDots.push('...', totalPages);
+    } else if (totalPages > 1) {
+      rangeWithDots.push(totalPages);
+    }
+
+    return rangeWithDots;
+  };
+
   return (
-    <>
+    <div className="space-y-6">
       {/* Filters Section */}
-      <div className="space-y-4 mb-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4" />
@@ -315,12 +373,28 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
             />
           </div>
         </div>
+      </div>
 
-        {/* Results count */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            Showing {filteredData.length} of {data.length} transactions
-          </span>
+      {/* Results Info & Items Per Page */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} transactions
+        </div>
+        <div className="flex items-center space-x-2">
+          <Label htmlFor="items-per-page" className="text-sm font-medium">
+            Items per page:
+          </Label>
+          <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+            <SelectTrigger className="w-[70px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -328,38 +402,55 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
       <div className="rounded-md border">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="font-semibold">Date</TableHead>
+              <TableHead className="font-semibold">Description</TableHead>
+              <TableHead className="font-semibold">Category</TableHead>
+              <TableHead className="text-right font-semibold">Amount</TableHead>
+              <TableHead className="w-[50px]">
                 <span className="sr-only">Actions</span>
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredData.length === 0 ? (
+            {paginatedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
-                  {hasActiveFilters ? "No transactions match your filters." : "No transactions found."}
+                <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                  {hasActiveFilters ? (
+                    <div className="space-y-2">
+                      <p>No transactions match your filters.</p>
+                      <Button variant="outline" size="sm" onClick={clearFilters}>
+                        Clear filters
+                      </Button>
+                    </div>
+                  ) : (
+                    "No transactions found."
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredData.map((transaction) => (
-                <TableRow key={transaction._id}>
-                  <TableCell>{formatDate(transaction.date)}</TableCell>
+              paginatedData.map((transaction) => (
+                <TableRow key={transaction._id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">
-                    {transaction.description}
+                    {formatDate(transaction.date)}
                   </TableCell>
-                  <TableCell>{transaction.category}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell>
+                    <div className="max-w-[200px] truncate" title={transaction.description}>
+                      {transaction.description}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">
+                      {transaction.category}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
                     {formatCurrency(transaction.amount)}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                        <Button aria-haspopup="true" size="icon" variant="ghost" className="h-8 w-8">
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">Toggle menu</span>
                         </Button>
@@ -369,7 +460,10 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
                         <DropdownMenuItem onSelect={() => handleEdit(transaction)}>
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleDelete(transaction)}>
+                        <DropdownMenuItem 
+                          onSelect={() => handleDelete(transaction)}
+                          className="text-destructive focus:text-destructive"
+                        >
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -381,6 +475,74 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToFirstPage}
+              disabled={currentPage === 1}
+            >
+              First
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToPreviousPage}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+
+            <div className="flex items-center space-x-1">
+              {getPageNumbers().map((pageNumber, index) => (
+                <React.Fragment key={index}>
+                  {pageNumber === '...' ? (
+                    <span className="px-2 py-1 text-sm text-muted-foreground">...</span>
+                  ) : (
+                    <Button
+                      variant={currentPage === pageNumber ? "default" : "outline"}
+                      size="sm"
+                      className="w-8 h-8 p-0"
+                      onClick={() => goToPage(pageNumber as number)}
+                    >
+                      {pageNumber}
+                    </Button>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToNextPage}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToLastPage}
+              disabled={currentPage === totalPages}
+            >
+              Last
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -397,19 +559,19 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
       
       {/* Delete Alert Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <AlertDialogContent>
-              <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete this transaction.
-                  </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
-              </AlertDialogFooter>
-          </AlertDialogContent>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this transaction.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

@@ -155,14 +155,16 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Charts Row 2 - Trends and Progress */}
+      {/* Charts Row 2 - Trends and Progress with Fixed Heights */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle>Spending Trends Over Time</CardTitle>
           </CardHeader>
-          <CardContent>
-            <SpendingTrendsChart />
+          <CardContent className="p-0">
+            <div className="p-6">
+              <SpendingTrendsChart />
+            </div>
           </CardContent>
         </Card>
         
@@ -170,14 +172,16 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle>Category Budget Progress</CardTitle>
           </CardHeader>
-          <CardContent>
-            <BudgetProgressBars data={budgetVsActual} />
+          <CardContent className="p-0">
+            <div className="h-[390px] overflow-y-auto scrollbar-thin scrollbar-thumb-accent scrollbar-track-transparent hover:scrollbar-thumb-accent/80 p-6">
+              <BudgetProgressBars data={budgetVsActual} />
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Row 3 - Monthly Overview */}
-      <div className="grid gap-4 md:grid-cols-1">
+      {/* Charts Row 3 - Monthly Overview and Recent Transactions Side by Side */}
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Monthly Expenses Overview</CardTitle>
@@ -186,17 +190,16 @@ export default async function DashboardPage() {
             <MonthlyExpensesChart />
           </CardContent>
         </Card>
-      </div>
 
-      {/* Recent Transactions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RecentTransactions transactions={recentTransactions} />
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Transactions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RecentTransactions transactions={recentTransactions} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
