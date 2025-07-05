@@ -82,7 +82,7 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [filters, setFilters] = useState<Filters>({
     category: "",
@@ -206,9 +206,9 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
     setCurrentPage(1); // Reset to first page
   };
 
-  // Generate page numbers for pagination
+  // Generate page numbers for pagination - responsive version
   const getPageNumbers = () => {
-    const delta = 2; // Number of pages to show on each side of current page
+    const delta = window.innerWidth < 768 ? 1 : 2; // Fewer pages on mobile
     const range = [];
     const rangeWithDots = [];
 
@@ -234,7 +234,7 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Filters Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -376,12 +376,12 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
       </div>
 
       {/* Results Info & Items Per Page */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="text-sm text-muted-foreground">
           Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} transactions
         </div>
         <div className="flex items-center space-x-2">
-          <Label htmlFor="items-per-page" className="text-sm font-medium">
+          <Label htmlFor="items-per-page" className="text-sm font-medium whitespace-nowrap">
             Items per page:
           </Label>
           <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
@@ -399,14 +399,14 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="font-semibold">Date</TableHead>
+              <TableHead className="font-semibold whitespace-nowrap">Date</TableHead>
               <TableHead className="font-semibold">Description</TableHead>
-              <TableHead className="font-semibold">Category</TableHead>
-              <TableHead className="text-right font-semibold">Amount</TableHead>
+              <TableHead className="font-semibold whitespace-nowrap">Category</TableHead>
+              <TableHead className="text-right font-semibold whitespace-nowrap">Amount</TableHead>
               <TableHead className="w-[50px]">
                 <span className="sr-only">Actions</span>
               </TableHead>
@@ -431,20 +431,20 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
             ) : (
               paginatedData.map((transaction) => (
                 <TableRow key={transaction._id} className="hover:bg-muted/50">
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium whitespace-nowrap">
                     {formatDate(transaction.date)}
                   </TableCell>
                   <TableCell>
-                    <div className="max-w-[200px] truncate" title={transaction.description}>
+                    <div className="max-w-[120px] sm:max-w-[200px] truncate" title={transaction.description}>
                       {transaction.description}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs whitespace-nowrap">
                       {transaction.category}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="text-right font-medium whitespace-nowrap">
                     {formatCurrency(transaction.amount)}
                   </TableCell>
                   <TableCell>
@@ -476,50 +476,93 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
         </Table>
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - Mobile Responsive */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-sm text-muted-foreground order-2 sm:order-1">
             Page {currentPage} of {totalPages}
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToFirstPage}
-              disabled={currentPage === 1}
-            >
-              First
-            </Button>
+          {/* Mobile Pagination - Simplified */}
+          <div className="flex items-center space-x-1 sm:space-x-2 order-1 sm:order-2">
+            {/* First & Previous - Always show on desktop, conditional on mobile */}
+            <div className="hidden sm:flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToFirstPage}
+                disabled={currentPage === 1}
+                className="h-8 px-2"
+              >
+                First
+              </Button>
+            </div>
             
             <Button
               variant="outline"
               size="sm"
               onClick={goToPreviousPage}
               disabled={currentPage === 1}
+              className="h-8 px-2"
             >
               <ChevronLeft className="h-4 w-4" />
-              Previous
+              <span className="hidden sm:inline ml-1">Previous</span>
             </Button>
 
+            {/* Page Numbers - Responsive */}
             <div className="flex items-center space-x-1">
-              {getPageNumbers().map((pageNumber, index) => (
-                <React.Fragment key={index}>
-                  {pageNumber === '...' ? (
-                    <span className="px-2 py-1 text-sm text-muted-foreground">...</span>
-                  ) : (
-                    <Button
-                      variant={currentPage === pageNumber ? "default" : "outline"}
-                      size="sm"
-                      className="w-8 h-8 p-0"
-                      onClick={() => goToPage(pageNumber as number)}
-                    >
-                      {pageNumber}
-                    </Button>
-                  )}
-                </React.Fragment>
-              ))}
+              {/* Mobile: Show only current page and neighbors */}
+              <div className="flex sm:hidden items-center space-x-1">
+                {currentPage > 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-8 h-8 p-0"
+                    onClick={() => goToPage(currentPage - 1)}
+                  >
+                    {currentPage - 1}
+                  </Button>
+                )}
+                
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="w-8 h-8 p-0"
+                >
+                  {currentPage}
+                </Button>
+                
+                {currentPage < totalPages && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-8 h-8 p-0"
+                    onClick={() => goToPage(currentPage + 1)}
+                  >
+                    {currentPage + 1}
+                  </Button>
+                )}
+              </div>
+
+              {/* Desktop: Show full pagination */}
+              <div className="hidden sm:flex items-center space-x-1">
+                {getPageNumbers().map((pageNumber, index) => (
+                  <React.Fragment key={index}>
+                    {pageNumber === '...' ? (
+                      <span className="px-2 py-1 text-sm text-muted-foreground">...</span>
+                    ) : (
+                      <Button
+                        variant={currentPage === pageNumber ? "default" : "outline"}
+                        size="sm"
+                        className="w-8 h-8 p-0"
+                        onClick={() => goToPage(pageNumber as number)}
+                      >
+                        {pageNumber}
+                      </Button>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
 
             <Button
@@ -527,26 +570,31 @@ export default function TransactionsTable({ data }: TransactionsTableProps) {
               size="sm"
               onClick={goToNextPage}
               disabled={currentPage === totalPages}
+              className="h-8 px-2"
             >
-              Next
+              <span className="hidden sm:inline mr-1">Next</span>
               <ChevronRight className="h-4 w-4" />
             </Button>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToLastPage}
-              disabled={currentPage === totalPages}
-            >
-              Last
-            </Button>
+            {/* Last - Only show on desktop */}
+            <div className="hidden sm:flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToLastPage}
+                disabled={currentPage === totalPages}
+                className="h-8 px-2"
+              >
+                Last
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Transaction</DialogTitle>
           </DialogHeader>
