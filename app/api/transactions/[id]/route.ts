@@ -21,10 +21,10 @@ interface Params {
 }
 
 // --- GET: Fetch a single transaction by ID ---
-export async function GET(request: Request, context: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
-    const { id } = await context.params;
+    const { id } = await params;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ message: 'Invalid transaction ID' }, { status: 400 });
@@ -44,10 +44,10 @@ export async function GET(request: Request, context: { params: { id: string } })
 }
 
 // --- PUT: Update a transaction by ID ---
-export async function PUT(request: Request, context: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
-    const { id } = await context.params;
+    const { id } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ message: 'Invalid transaction ID' }, { status: 400 });
@@ -81,10 +81,10 @@ export async function PUT(request: Request, context: { params: { id: string } })
 }
 
 // --- DELETE: Delete a transaction by ID ---
-export async function DELETE(request: Request, context: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
-    const { id } = await context.params;
+    const { id } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ message: 'Invalid transaction ID' }, { status: 400 });
